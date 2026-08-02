@@ -246,7 +246,7 @@ services:
       - "3799:3799/udp"
 
   postgresql:
-    image: "postgres:${POSTGRESQL_TAG}"
+    image: "pgvector/pgvector:${PGVECTOR_TAG}"
     networks:
       openwifi:
     command:
@@ -268,3 +268,20 @@ services:
       retries: 5
       start_period: 30s
       timeout: 10s
+
+  aura-cloud:
+    build:
+      context: ./aura
+      args:
+        AURA_TAG: ${AURA_TAG}
+    restart: unless-stopped
+    env_file:
+      - path: aura-cloud.env
+        required: false
+    networks:
+      openwifi:
+        aliases:
+          - aura.wlan.local
+    depends_on:
+      postgresql:
+        condition: service_healthy

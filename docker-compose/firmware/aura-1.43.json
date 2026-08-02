@@ -1,0 +1,35 @@
+{
+  "manifest_version": 1,
+  "release": {
+    "version": "1.43",
+    "built_at": "2026-07-23T04:10:09Z",
+    "git_sha": "41b6d48ca61f3a74fe25c35d16372713325b7fc5",
+    "git_tag": "aura-1.43"
+  },
+  "targets": {
+    "edgecore_eap104": {
+      "url": "https://pub-553f636ae8db4524a9df62fa7e37cc6e.r2.dev/releases/aura-1.43/openwrt-aura-rel-1.43-ipq50xx-edgecore_eap104-squashfs-sysupgrade.bin",
+      "filename": "openwrt-aura-rel-1.43-ipq50xx-edgecore_eap104-squashfs-sysupgrade.bin",
+      "sha256": "ca6c766d4207aa71ca041383c099394556556c9b1316bae37a223936cd9fd4f9",
+      "size_bytes": 20327221
+    },
+    "edgecore_eap105": {
+      "url": "https://pub-553f636ae8db4524a9df62fa7e37cc6e.r2.dev/releases/aura-1.43/openwrt-aura-rel-1.43-ipq53xx-edgecore_eap105-squashfs-sysupgrade.bin",
+      "filename": "openwrt-aura-rel-1.43-ipq53xx-edgecore_eap105-squashfs-sysupgrade.bin",
+      "sha256": "2844ea1adceb4981fd7e2d40ea8b72c612b30d9a8de808efaeb0ca2bbd623e8d",
+      "size_bytes": 30935861
+    },
+    "sonicfi_rap630c-311g": {
+      "url": "https://pub-553f636ae8db4524a9df62fa7e37cc6e.r2.dev/releases/aura-1.43/openwrt-aura-rel-1.43-ipq50xx-sonicfi_rap630c_311g-squashfs-sysupgrade.bin",
+      "filename": "openwrt-aura-rel-1.43-ipq50xx-sonicfi_rap630c_311g-squashfs-sysupgrade.bin",
+      "sha256": "547f8b2933fea7de1481052d541b76db75dabcfc79d9014ba2387bc356579e89",
+      "size_bytes": 20327231
+    },
+    "sonicfi_rap630w-311g": {
+      "url": "https://pub-553f636ae8db4524a9df62fa7e37cc6e.r2.dev/releases/aura-1.43/openwrt-aura-rel-1.43-ipq50xx-sonicfi_rap630w_311g-squashfs-sysupgrade.bin",
+      "filename": "openwrt-aura-rel-1.43-ipq50xx-sonicfi_rap630w_311g-squashfs-sysupgrade.bin",
+      "sha256": "f8327fea0d2dfbd5560bb98a44300d715d1724acd944b77b33dd19cd37e0379b",
+      "size_bytes": 20327231
+    }
+  }
+}

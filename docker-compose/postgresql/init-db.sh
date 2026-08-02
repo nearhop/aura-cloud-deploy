@@ -1,6 +1,5 @@
 #!/bin/bash
 set -e
-
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" <<-EOSQL
     CREATE USER $OWGW_DB_USER WITH ENCRYPTED PASSWORD '$OWGW_DB_PASSWORD';
     CREATE DATABASE $OWGW_DB OWNER $OWGW_DB_USER;
@@ -15,3 +14,20 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" <<-EOSQL
     CREATE USER $OWSUB_DB_USER WITH ENCRYPTED PASSWORD '$OWSUB_DB_PASSWORD';
     CREATE DATABASE $OWSUB_DB OWNER $OWSUB_DB_USER;
 EOSQL
+
+# Aura Cloud. Created last, so the healthcheck below it in
+# docker-compose.yml still reflects a fully initialised instance.
+#
+# The vector extension backs the RAG embedding tables in Aura's first
+# migration. Creating an extension requires superuser, so it is done
+# here rather than by Aura itself.
+if [ -n "$AURA_DB" ]; then
+	psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" <<-EOSQL
+	    CREATE USER $AURA_DB_USER WITH ENCRYPTED PASSWORD '$AURA_DB_PASSWORD';
+	    CREATE DATABASE $AURA_DB OWNER $AURA_DB_USER;
+	EOSQL
+
+	psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$AURA_DB" <<-EOSQL
+	    CREATE EXTENSION IF NOT EXISTS vector;
+	EOSQL
+fi

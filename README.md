@@ -1,20 +1,59 @@
-# wlan-cloud-ucentral-deploy
+# aura-cloud-deploy
 
-This Git repository is used for different deployment manifests for [uCentral](https://openwifi.tip.build/v/2.0.0/)
+Deployment manifests for Aura Cloud, the Nearhop WLAN controller platform.
 
-Currently 2 deployment methods are supported:
+Aura runs alongside the [OpenWiFi](https://openwifi.tip.build/) microservices:
+the OpenWiFi gateway terminates the connection from the access points, and
+Aura provides the management interface, health scoring, RRM and analytics on
+top of it. This repository deploys the whole stack as a single set of
+containers.
 
-1. [Helm deployment](chart) - may be used for deployment to Kubernetes clusters
-2. [Docker-compose](docker-compose) - may be used for local deployments
+It is a fork of
+[wlan-cloud-ucentral-deploy](https://github.com/Telecominfraproject/wlan-cloud-ucentral-deploy),
+reduced to the Docker Compose deployment and extended with the Aura service
+and its setup scripts.
 
-Details on every type of deployment may be found in the corresponding directories
+Everything lives in [docker-compose](docker-compose). See
+[docker-compose/README.md](docker-compose/README.md) for the details.
 
-## How to cut a new release
+## Requirements
 
-This is a short version of [uCentral branching model](https://telecominfraproject.atlassian.net/wiki/spaces/WIFI/pages/1416364078/uCentral+branching+model) doc with specifics for this repo. To cut a new release following steps must be done:
+- Docker Engine with the Compose v2 plugin (`docker compose`, not
+  `docker-compose`)
+- 8 GB RAM and 20 GB disk for a typical single-site deployment
+- A hostname or static address that both browsers and access points can
+  reach
 
-1. Create release branch with next Chart version (check Git tags for the latest version - for example if latest tag was `v0.1.0`, create release branch `release/v0.1.1`), set required microservices tags in refs in Chart.yaml (for example, if we want to have this version to be tied to ucentralgw release version `v2.0.0`, we should set it’s repository to `"git+https://github.com/Telecominfraproject/wlan-cloud-ucentralgw@helm?ref=v2.0.0"`).
-2. Increase Helm version in [Chart.yaml](./chart/Chart.yaml) to the same version as Git tag (for example if the latest git tag is `v0.1.0`, set version `0.1.1` (**without v in it**) in Chart.yaml).
-3. Also increase the microservice image tags used by the Docker Compose deployments according to the release in the 'Image tags' section of the `docker-compose/.env`, `docker-compose/.env.selfsigned` and `docker-compose/.env.letsencrypt` files.
-4. Create new git tag from release branch. The Git tag should have the same name as the intended release version. Once the tag is pushed to the repo, Github will trigger a build process that will create an assembly Helm chart bundle with all version fixed to the release equal to the Git tag name and will publish it to the public Artifactory and as GitHub release asset.
-5. Release to the QA namespace using the packaged Helm assembly chart to verify there are no issues related to the deployment.
+## Quick start
+
+    git clone https://github.com/nearhop/aura-cloud-deploy.git
+    cd aura-cloud-deploy/docker-compose
+    ./install.sh
+
+The Aura binary is downloaded when the image is built. The release comes
+from `AURA_TAG` in `.env`.
+
+The installer checks the host, generates the credentials, configures the
+services and starts them. It prints the addresses and the administrator
+login when it finishes.
+
+## Scripts
+
+All are run from the `docker-compose` directory.
+
+| Script | Purpose |
+| --- | --- |
+| `install.sh` | First-run setup. Run once. |
+| `start_aura.sh` | Start the stack. |
+| `stop_aura.sh` | Stop the stack. Data is kept. |
+| `status.sh` | Show what is running and check for common problems. |
+| `update_aura.sh` | Move to the release named by `AURA_TAG`. |
+| `bootstrap_owsec.sh` | Reissue the OpenWiFi credentials Aura uses. |
+| `reset.sh` | Remove data and configuration. |
+
+## Kubernetes
+
+The upstream project also publishes a Helm chart. It is not carried here:
+Aura's on-premise deployment targets a single host, where Compose is simpler
+to install, operate and support. The chart in the upstream repository can be
+used as a starting point if a cluster deployment is ever needed.
