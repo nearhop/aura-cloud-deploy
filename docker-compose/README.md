@@ -148,6 +148,7 @@ suffix.
     ./stop_aura.sh           # stop, keeping all data
     ./status.sh              # what is running, and common problems
     ./update_aura.sh         # move to the release named by AURA_TAG
+    ./ai_setup.sh            # set or change the AI assistant key
 
     docker compose logs -f aura-cloud
     docker compose logs -f owgw
@@ -193,6 +194,51 @@ Access points fetch the image themselves from the URL in the manifest,
 so they need outbound HTTPS access to it. Deployments without internet
 access need the images hosted locally and the manifest URLs changed to
 match before importing.
+
+## AI assistant
+
+Aura has an optional assistant that answers questions about the network,
+such as why a client keeps disconnecting or which access points are
+busiest. It is off until a Groq API key is configured; without one the
+panel is simply not shown.
+
+What leaves this host: each question, and the network data the assistant
+looks up to answer it (access points and their events, client counts,
+SSIDs, neighbouring networks, application usage), is sent to Groq.
+Access is read-only; the assistant cannot change configuration. Leave it
+off if that data must stay on the premises.
+
+### Turning it on
+
+`install.sh` asks for a key. To add one later, or to change it:
+
+    ./ai_setup.sh
+
+It asks for the key without echoing it, checks it with Groq, saves it as
+`GROQ_API_KEY` in `aura-cloud.env` and restarts `aura-cloud`. Reload the
+Aura interface afterwards. Keys are created at
+https://console.groq.com/keys.
+
+To turn it off again:
+
+    ./ai_setup.sh --off
+
+For unattended setups the key can be passed in the environment:
+
+    GROQ_API_KEY=gsk_... ./ai_setup.sh
+
+It is never accepted as a command-line argument, which would leave it in
+the shell history and the process list.
+
+### Limits
+
+Each user can send 100 messages in any 24 hours. The count is kept in
+memory, so it resets when `aura-cloud` restarts. Usage is also subject to
+the limits of the Groq account the key belongs to.
+
+Older installations may have `AI_PROVIDER`, `OLLAMA_URL` and `AI_MODEL`
+lines in `aura-cloud.env`. Aura does not read them and they can be
+deleted. Only `GROQ_API_KEY` turns the assistant on.
 
 ## Remote shell on access points
 
@@ -386,6 +432,18 @@ reachable from the access point network:
 The `tmate` log may start with `sh: out of range`. That comes from the
 image's start-up script testing optional settings that are not set, and
 is harmless.
+
+**The AI assistant panel does not appear.** `GROQ_API_KEY` is empty or
+missing in `aura-cloud.env`, or `aura-cloud` has not been restarted since
+it was set. Check what the running container sees:
+
+    docker compose exec aura-cloud env | grep -c '^GROQ_API_KEY=.'
+
+`1` means the key is loaded. The startup log then has a line starting
+with `insights: chat enabled`. If the panel appears but answers fail, the
+host may not reach `api.groq.com`, or the Groq account has hit its limit:
+
+    docker compose logs --tail=50 aura-cloud | grep -i -E "insights|groq"
 
 **Nothing works after a reinstall.** Some state lives on the host rather
 than in the volumes. Use `./reset.sh` rather than `docker compose down -v`.

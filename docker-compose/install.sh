@@ -287,6 +287,29 @@ else
 	AURA_HOST="$PUBLIC_HOST"
 fi
 
+# --- AI assistant -------------------------------------------------
+
+# Optional. Without a key the assistant panel is simply not shown, so
+# an empty answer is a normal choice, not a failure. The key is read
+# without echo because it is a credential.
+info ""
+info "AI assistant (optional). Answers questions about the network in"
+info "the Aura interface, using Groq. Questions and the network data"
+info "needed to answer them are sent to Groq. Get a key at"
+info "https://console.groq.com/keys, or leave empty and add one later"
+info "with ./ai_setup.sh."
+
+GROQ_API_KEY=""
+while :; do
+	read -r -s -p "  Groq API key [none]: " GROQ_API_KEY; echo
+	# The key is written into an env file, so only characters a key can
+	# contain are accepted.
+	if [ -z "$GROQ_API_KEY" ] || [[ "$GROQ_API_KEY" =~ ^[A-Za-z0-9_-]+$ ]]; then
+		break
+	fi
+	warn "that does not look like an API key; try again or leave empty"
+done
+
 DB_PASSWORD="$(gen_password)"
 JWT_SECRET="$(gen_secret)"
 
@@ -423,9 +446,9 @@ SUPERADMIN_NAME=Administrator
 SUPERADMIN_PASSWORD=${ADMIN_PASSWORD}
 
 # --- AI assistant (optional) ------------------------------------
-#AI_PROVIDER=ollama
-#OLLAMA_URL=http://localhost:11434
-#AI_MODEL=llama3.2:3b
+# Groq API key. Empty turns the assistant off. Questions and the network
+# data needed to answer them are sent to Groq. Change with ./ai_setup.sh.
+GROQ_API_KEY=${GROQ_API_KEY}
 
 # --- Email (optional) -------------------------------------------
 #SMTP_HOST=
@@ -580,6 +603,7 @@ cat <<EOF
   OpenWiFi UI    ${OPENWIFI_URL}
 
   Administrator  ${ADMIN_EMAIL}
+  AI assistant   $([ -n "$GROQ_API_KEY" ] && echo "on (Groq)" || echo "off, enable with ./ai_setup.sh")
 EOF
 
 if [ "$GENERATED_ADMIN_PW" -eq 1 ]; then
