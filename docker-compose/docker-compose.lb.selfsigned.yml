@@ -269,6 +269,26 @@ services:
       start_period: 30s
       timeout: 10s
 
+  tmate:
+    # Self-hosted tmate server for the AP debug shell. The public
+    # ssh.tmate.io no longer resolves. Keys and TMATE_HOST come from
+    # ./tmate_setup.sh; run it before starting this service.
+    image: "docker.io/tmate/tmate-ssh-server:latest"
+    restart: unless-stopped
+    # tmate-ssh-server sandboxes each session in its own namespaces.
+    cap_add:
+      - SYS_ADMIN
+    environment:
+      SSH_KEYS_PATH: /keys
+      SSH_PORT_LISTEN: "2200"
+      SSH_HOSTNAME: ${TMATE_HOST:-localhost}
+    volumes:
+      - ./tmate_data/keys:/keys:ro
+    ports:
+      - "2200:2200"
+    networks:
+      - openwifi
+
   aura-cloud:
     build:
       context: ./aura
