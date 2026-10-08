@@ -16,6 +16,7 @@ Runs Aura Cloud and the OpenWiFi microservices on a single host.
 | owsub | 16006 | Subscriber services |
 | owgw-ui | 443 | OpenWiFi web interface |
 | owprov-ui | 8443 | Provisioning web interface |
+| tmate | 2200 | Remote shell server for access points, see [Remote shell on access points](#remote-shell-on-access-points) |
 | postgresql | - | Database, not published outside the host |
 | kafka | - | Message bus, not published outside the host |
 
@@ -193,6 +194,103 @@ so they need outbound HTTPS access to it. Deployments without internet
 access need the images hosted locally and the manifest URLs changed to
 match before importing.
 
+## Remote shell on access points
+
+The Debug shell button on an access point's page opens a shell on that
+access point. It uses tmate: the access point connects out to a tmate
+server, and the operator connects to the same server with the `ssh`
+command Aura shows. Nothing needs to be reachable on the access point
+itself, so this works behind NAT.
+
+The public server tmate uses by default, `ssh.tmate.io`, no longer
+exists. The stack therefore runs its own, the `tmate` service on port
+2200. It needs a one-time setup and an Aura release with tmate support
+(v1.36 or later).
+
+### Setting it up
+
+1. Run the setup script with the address the access points and
+   operators use to reach this host. An IP address or a DNS name both
+   work:
+
+       ./tmate_setup.sh <hostname-or-ip>
+
+   It creates the server's host keys in `tmate_data/keys/` and writes the
+   settings below into `.env` and `aura-cloud.env`. Running it again
+   keeps the existing keys.
+
+2. Open TCP port 2200 inbound. Published Docker ports bypass `ufw`, but
+   not a cloud provider's firewall (for example a DigitalOcean Cloud
+   Firewall or an AWS security group). Add the rule there.
+
+3. Start the server and recreate Aura so it reads the new settings:
+
+       docker compose up -d tmate
+       docker compose up -d --force-recreate aura-cloud
+
+   If `install.sh` set up a load balancer deployment, use the wrapper
+   instead so the right compose file is used: `. ./common.sh` and then
+   `dc up -d tmate` and so on.
+
+4. Check the server is accepting connections:
+
+       docker compose logs --tail=10 tmate
+
+   The log should end with `Accepting connections on :2200`.
+
+### Checking from an access point
+
+On an access point shell, this should print `SSH-2.0-tmate`:
+
+    (sleep 3) | nc <hostname-or-ip> 2200
+
+BusyBox `nc` exits as soon as its input closes, which is why the input is
+kept open with `sleep`. With `</dev/null` it returns before the banner
+arrives and looks like a failure.
+
+### Settings
+
+`tmate_setup.sh` writes these. They are listed here for reference and for
+changing by hand.
+
+| Setting | File | Purpose |
+| --- | --- | --- |
+| `TMATE_HOST` | `.env` | Host name in the `ssh` command the server hands out |
+| `TMATE_HOST` | `aura-cloud.env` | Server the access points connect to |
+| `TMATE_PORT` | `aura-cloud.env` | Server port, 2200 |
+| `TMATE_RSA_FINGERPRINT` | `aura-cloud.env` | Server host key, checked by the access point |
+| `TMATE_ED25519_FINGERPRINT` | `aura-cloud.env` | Server host key, checked by the access point |
+
+Aura passes these to the access point with each Debug shell request, in a
+temporary tmate configuration file. No firmware change is involved.
+
+Without `TMATE_HOST`, access points fall back to `ssh.tmate.io` and the
+Debug shell fails with "AP cannot resolve ssh.tmate.io".
+
+### Changing the address
+
+If the host's address changes, or a DNS name is added later, run the setup
+script again with the new address and repeat step 3. The keys, and so the
+fingerprints, stay the same.
+
+### Replacing the keys
+
+Delete `tmate_data/keys/`, run `./tmate_setup.sh` again and repeat step 3.
+Access points check the server's key against the fingerprints, so the
+new fingerprints must reach Aura before the next Debug shell, which is
+what recreating `aura-cloud` does.
+
+### Security
+
+Anyone holding the `ssh` command Aura shows has a root shell on that
+access point until the session ends. Aura does not write the command to
+its log. Use End session when finished: a session left open lasts until
+the access point reboots.
+
+Only superadmins and MSP administrators can start a session. The tmate
+server itself accepts connections from anywhere, but a session can only
+be joined with its token, which is part of the `ssh` command.
+
 ## Removing
 
     ./reset.sh                 # everything
@@ -215,6 +313,7 @@ cleanly and rejects every login.
 | `ow*.env` | OpenWiFi service configuration. |
 | `postgresql.env` | Database names and credentials. |
 | `certs/` | TLS certificates for the gateway and the REST APIs. |
+| `tmate_data/keys/` | Host keys for the remote shell server. Generated. Not in git. |
 
 `SYSTEM_URI_PRIVATE` in the service env files refers to the Docker network
 aliases and is resolved only between containers. Changing it breaks every
@@ -270,6 +369,23 @@ reachable from the access point network:
 
     ss -tln | grep 15002
     docker compose logs owgw | grep -i alert
+
+**Debug shell fails.** Aura shows the reason from the access point:
+
+- "AP cannot resolve <name>": the access point's DNS cannot find
+  `TMATE_HOST`. Use an IP address, or fix the name.
+- "AP could not connect to tmate server <host>:2200 within 15s": the
+  port is blocked between the access point and this host, the `tmate`
+  service is down, or the fingerprints in `aura-cloud.env` no longer
+  match the keys. Run the `nc` check from
+  [Checking from an access point](#checking-from-an-access-point), then
+  `docker compose logs tmate`.
+- "timed out", with no other reason: Aura is older than v1.36 and does
+  not support the self-hosted server.
+
+The `tmate` log may start with `sh: out of range`. That comes from the
+image's start-up script testing optional settings that are not set, and
+is harmless.
 
 **Nothing works after a reinstall.** Some state lives on the host rather
 than in the volumes. Use `./reset.sh` rather than `docker compose down -v`.
